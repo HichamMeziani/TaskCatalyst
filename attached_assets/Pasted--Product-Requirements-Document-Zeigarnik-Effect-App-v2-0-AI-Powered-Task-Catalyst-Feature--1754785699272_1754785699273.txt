@@ -1,0 +1,236 @@
+# Product Requirements Document: Zeigarnik Effect App v2.0
+## AI-Powered Task Catalyst Feature
+
+---
+
+## Executive Summary
+
+Adding an AI catalyst feature to the Zeigarnik Effect app that automatically generates a single, actionable subtask designed to overcome initial resistance and create momentum toward completing larger tasks. This leverages both the Zeigarnik Effect (incomplete tasks create productive tension) and the psychology of small wins to maximize task initiation rates.
+
+---
+
+## Problem Statement
+
+**Current State:** Users add tasks but often struggle with the initial activation energy required to start them, leading to procrastination despite the Zeigarnik Effect creating mental tension.
+
+**User Pain Points:**
+- "I know I need to write the report, but I don't know where to start"
+- Large tasks feel overwhelming even when broken into "in-progress" status  
+- Mental resistance prevents users from taking the first step
+- Tasks sit in "not-started" status indefinitely
+
+**Opportunity:** AI can identify the smallest, most psychologically accessible first step that acts as a catalyst for the larger task.
+
+---
+
+## Success Metrics
+
+### Primary KPIs
+- **Task Initiation Rate:** % of tasks moved to "in-progress" within 24 hours of creation
+- **Task Completion Rate:** % of tasks completed within 7 days
+- **User Retention:** 7-day and 30-day active user retention
+
+### Secondary KPIs
+- **Catalyst Effectiveness:** % of users who complete the AI-suggested subtask
+- **Time to First Action:** Average time between task creation and first subtask completion
+- **User Satisfaction:** Rating of AI-generated catalyst quality (1-5 scale)
+
+**Success Threshold:** 25% improvement in task initiation rate compared to current baseline
+
+---
+
+## User Stories
+
+### Core User Story
+**As a** productivity-focused user  
+**I want** an AI to suggest a tiny first step when I create a large task  
+**So that** I can overcome initial resistance and build momentum toward completion
+
+### Detailed User Scenarios
+
+**Scenario 1: The Overwhelmed Writer**
+- User creates: "Write quarterly marketing report"
+- AI suggests: "Open a blank document and write just the report title and today's date"
+- User completes the 30-second catalyst → document exists → Zeigarnik Effect activated
+
+**Scenario 2: The Procrastinating Developer**
+- User creates: "Refactor authentication system"
+- AI suggests: "Create a new branch called 'auth-refactor' and add one TODO comment"
+- User does the 1-minute task → code repository touched → momentum begins
+
+**Scenario 3: The Stuck Student**
+- User creates: "Study for organic chemistry exam"
+- AI suggests: "Find your textbook and open it to chapter 12 (leave it open on your desk)"
+- Physical action creates environmental commitment → study session more likely
+
+---
+
+## Feature Requirements
+
+### Functional Requirements
+
+#### Core AI Catalyst Generation
+- **Input:** User's task description (text string)
+- **Processing:** AI analyzes task and generates ONE catalyst subtask
+- **Output:** 2-15 word actionable subtask that requires <5 minutes to complete
+
+#### Catalyst Quality Criteria
+The AI-generated catalyst must be:
+1. **Micro-sized:** Completable in under 5 minutes
+2. **Concrete:** Specific action, not abstract planning
+3. **Low-friction:** Requires minimal tools, setup, or decision-making  
+4. **Progress-creating:** Produces tangible artifact that advances the main task
+5. **Psychologically safe:** No risk of failure or judgment
+
+#### User Interface Updates
+- **Task Creation Flow:** After user enters main task, AI catalyst appears immediately below
+- **Visual Hierarchy:** Catalyst shown as indented sub-item with distinct styling
+- **Completion Tracking:** Separate checkboxes for catalyst vs. main task
+- **Catalyst Status:** "Complete catalyst to activate main task" messaging
+
+#### AI Prompt Engineering
+```
+Given this task: "{user_task}"
+
+Generate a single catalyst subtask that:
+- Takes under 5 minutes
+- Creates tangible progress 
+- Removes initial friction
+- Is impossibly simple to start
+
+Format: Active verb + specific object + clear outcome
+Examples:
+- "Create folder named 'Project X' on desktop"
+- "Write the email subject line in your drafts"
+- "Set a 10-minute timer and place it next to your workspace"
+
+Catalyst subtask:
+```
+
+### Non-Functional Requirements
+
+#### Performance
+- **Response Time:** AI catalyst generation <2 seconds
+- **Availability:** 99.5% uptime for AI service
+- **Rate Limiting:** Max 20 catalyst requests per user per hour
+
+#### Quality Assurance
+- **Fallback System:** If AI fails, provide generic catalyst: "Set a 5-minute timer and begin"
+- **Content Filtering:** Block inappropriate or harmful suggestions
+- **A/B Testing:** Compare AI catalysts vs. no catalysts vs. human-written templates
+
+---
+
+## Technical Implementation
+
+### Architecture Overview
+```
+User Input → Task Parser → LLM API → Catalyst Generator → UI Render
+                     ↓
+               Task Classification → Context Enhancement
+```
+
+### API Integration
+- **LLM Provider:** OpenAI GPT-4 or Anthropic Claude (cost comparison needed)
+- **Backup Provider:** Secondary LLM for redundancy
+- **Local Fallbacks:** Pre-written catalyst templates for common task types
+
+### Data Flow
+1. User submits task via form input
+2. Client sends task text to backend catalyst service
+3. Service sends structured prompt to LLM API
+4. LLM returns catalyst suggestion
+5. Backend validates and sanitizes response
+6. Frontend displays main task + catalyst as linked pair
+7. User interactions tracked for optimization
+
+### Storage Requirements
+- **Task-Catalyst Pairs:** Store relationship between main task and generated catalyst
+- **Usage Analytics:** Track catalyst completion rates by task type
+- **User Feedback:** Optional rating system for catalyst quality
+
+---
+
+## User Experience Design
+
+### Information Architecture
+```
+Main Task
+  └── 🎯 Catalyst: [AI-generated micro-task]
+      ├── Status: [ ] Complete to unlock main task
+      └── Estimated time: <5 min
+```
+
+### Interaction Flow
+1. **Task Entry:** User types main task description
+2. **AI Processing:** Loading spinner while catalyst generates (1-2s)
+3. **Catalyst Reveal:** Catalyst appears with subtle animation
+4. **Completion Sequence:** 
+   - User checks off catalyst → visual celebration
+   - Main task automatically moves to "in-progress"
+   - Zeigarnik Effect messaging appears
+
+### Visual Design Principles
+- **Catalyst Styling:** Smaller font, indented, with catalyst emoji (🎯)
+- **Progress Indication:** Visual connection between catalyst and main task
+- **Motivation Messaging:** "Great! You've started. The hardest part is behind you."
+
+---
+
+## Success Criteria & Launch Plan
+
+### MVP Definition
+- AI generates contextually relevant catalysts for 80% of common task types
+- UI clearly shows catalyst-main task relationship
+- Basic completion tracking and analytics
+
+### Launch Phases
+
+#### Phase 1: Internal Testing (Week 1-2)
+- Test AI prompt reliability with 100+ diverse tasks
+- Validate catalyst quality with internal team
+- Implement basic UI and tracking
+
+#### Phase 2: Beta Testing (Week 3-4)  
+- 50 selected users test catalyst feature
+- Collect qualitative feedback on catalyst usefulness
+- Measure task initiation rate improvements
+
+#### Phase 3: Gradual Rollout (Week 5-6)
+- A/B test: 50% of new users get AI catalysts
+- Monitor system performance and costs
+- Iterate based on user behavior data
+
+#### Phase 4: Full Launch (Week 7+)
+- Enable for all users if metrics show >20% improvement
+- Optimize AI prompts based on completion patterns
+- Begin planning premium catalyst features
+
+### Risk Mitigation
+- **AI Quality Risk:** Human review of catalyst suggestions during beta
+- **Cost Risk:** Set LLM API budget limits and usage monitoring  
+- **User Adoption Risk:** Make catalyst feature optional with clear value proposition
+
+---
+
+## Open Questions
+
+1. **Monetization:** Should AI catalysts be free tier or premium feature?
+2. **Personalization:** Should catalysts adapt to user's historical completion patterns?
+3. **Integration:** Could catalysts connect to external tools (calendar, email, etc.)?
+4. **Expansion:** Should we generate multiple catalyst options for users to choose from?
+
+---
+
+## Appendix
+
+### Research Foundation
+- **Zeigarnik Effect:** Incomplete tasks create cognitive tension that enhances memory and motivation
+- **Implementation Intentions:** Specific "if-then" plans increase task completion by 200-300%
+- **Micro-habits:** BJ Fogg's research shows tiny behaviors create lasting change through momentum
+
+### Competitive Analysis
+- **Todoist:** Has subtasks but no AI-generated catalysts
+- **Notion:** Complex task breakdown, high cognitive overhead
+- **Sunsama:** Time-blocking focus, not catalyst-driven
+- **Opportunity:** First app to combine Zeigarnik Effect + AI catalysts for task initiation
