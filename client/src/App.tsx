@@ -20,11 +20,11 @@ function Router() {
         <Route path="/" component={Landing} />
       ) : !isAuthenticated ? (
         <>
-          <Route path="/" component={Landing} />
+          <Route path="/" component={Home} />
           <Route path="/onboarding" component={Onboarding} />
           <Route path="/subscribe" component={Subscribe} />
         </>
-      ) : !user?.onboardingCompleted ? (
+      ) : !(user as any)?.onboardingCompleted ? (
         <>
           <Route path="/" component={Onboarding} />
           <Route path="/onboarding" component={Onboarding} />
@@ -35,7 +35,6 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/subscribe" component={Subscribe} />
-          <Route path="/home" component={Home} />
         </>
       )}
       <Route component={NotFound} />

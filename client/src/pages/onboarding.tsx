@@ -86,27 +86,43 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (step === 1 && (!data.interests || data.interests.length < 3 || data.interests.length > 5)) {
-      toast({
-        title: "Please select 3-5 interests",
-        description: "Choose between 3 and 5 interests that best describe you.",
-        variant: "destructive",
-      });
+    console.log("handleNext called - Step:", step, "Data:", data);
+    
+    if (step === 1) {
+      console.log("Step 1 validation - interests:", data.interests, "length:", data.interests?.length);
+      if (!data.interests || data.interests.length < 3 || data.interests.length > 5) {
+        toast({
+          title: "Please select 3-5 interests",
+          description: "Choose between 3 and 5 interests that best describe you.",
+          variant: "destructive",
+        });
+        return;
+      }
+      console.log("Step 1 passed, moving to step 2");
+      setStep(2);
       return;
     }
     
-    if (step === 2 && !data.lifeGoal?.trim()) {
-      toast({
-        title: "Please enter your life goal",
-        description: "Tell us what you want to achieve.",
-        variant: "destructive",
-      });
+    if (step === 2) {
+      if (!data.lifeGoal?.trim()) {
+        toast({
+          title: "Please enter your life goal",
+          description: "Tell us what you want to achieve.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setStep(3);
       return;
     }
     
-    if (step < 4) {
-      setStep(step + 1);
-    } else {
+    if (step === 3) {
+      setStep(4);
+      return;
+    }
+    
+    if (step === 4) {
+      console.log("Final step - completing onboarding with data:", data);
       completeOnboardingMutation.mutate(data as OnboardingData);
     }
   };
