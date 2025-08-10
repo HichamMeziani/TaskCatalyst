@@ -36,6 +36,16 @@ export const users = pgTable("users", {
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionStatus: varchar("subscription_status").default("free"),
+  // Onboarding and gamification fields
+  interests: jsonb("interests").$type<string[]>().default([]),
+  lifeGoal: text("life_goal"),
+  dailyFreeTime: integer("daily_free_time"), // in hours
+  age: integer("age"),
+  gender: varchar("gender"),
+  productivityScore: integer("productivity_score").default(100),
+  productivityStreak: integer("productivity_streak").default(0),
+  lastActivityDate: timestamp("last_activity_date"),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -66,6 +76,8 @@ export const catalysts = pgTable("catalysts", {
   estimatedMinutes: integer("estimated_minutes").default(5),
   completed: boolean("completed").default(false),
   completedAt: timestamp("completed_at"),
+  relevanceScore: integer("relevance_score").default(0), // 0-100 based on user interests
+  matchedInterests: jsonb("matched_interests").$type<string[]>().default([]),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -83,11 +95,33 @@ export const taskAnalytics = pgTable("task_analytics", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Activity feed for FOMO feature
+export const activityFeed = pgTable("activity_feed", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  username: varchar("username"), // Can be null for anonymous
+  activityType: varchar("activity_type").notNull(), // "task_completed", "score_milestone", etc.
+  description: text("description").notNull(),
+  taskTitle: text("task_title"),
+  productivityScore: integer("productivity_score"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Create insert schemas
 export const upsertUserSchema = createInsertSchema(users);
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCatalystSchema = createInsertSchema(catalysts).omit({ id: true, createdAt: true });
 export const insertAnalyticsSchema = createInsertSchema(taskAnalytics).omit({ id: true, createdAt: true });
+export const insertActivityFeedSchema = createInsertSchema(activityFeed).omit({ id: true, createdAt: true });
+
+// Onboarding schema
+export const onboardingSchema = z.object({
+  interests: z.array(z.string()).min(3).max(5),
+  lifeGoal: z.string().min(1).max(200),
+  dailyFreeTime: z.number().min(0).max(24),
+  age: z.number().min(13).max(120),
+  gender: z.enum(["male", "female", "non-binary", "prefer-not-to-say", "custom"]),
+});
 
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
@@ -98,8 +132,15 @@ export type Catalyst = typeof catalysts.$inferSelect;
 export type InsertCatalyst = z.infer<typeof insertCatalystSchema>;
 export type TaskAnalytics = typeof taskAnalytics.$inferSelect;
 export type InsertTaskAnalytics = z.infer<typeof insertAnalyticsSchema>;
+export type ActivityFeed = typeof activityFeed.$inferSelect;
+export type InsertActivityFeed = z.infer<typeof insertActivityFeedSchema>;
+export type OnboardingData = z.infer<typeof onboardingSchema>;
 
-// Task with catalyst type
+// Extended types
 export type TaskWithCatalyst = Task & {
   catalyst?: Catalyst;
+};
+
+export type UserWithProfile = User & {
+  displayName: string;
 };

@@ -1,0 +1,206 @@
+# TaskCatalyst Integration Plan
+
+## Overview
+Transform TaskCatalyst into a gamified productivity platform with personalized task management, social features, and engagement mechanics.
+
+## Integration Components
+
+### 1. Homepage Redesign
+**Current State:** "Start Free Trial" button
+**Target State:** "Get Things Done" CTA button
+
+**Implementation:**
+- Unified homepage for authenticated and non-authenticated users
+- Conditional routing based on authentication status:
+  - Authenticated → Dashboard
+  - Non-authenticated → Account creation flow
+- TaskCatalyst logo/text in top-left as home navigation
+
+### 2. Onboarding Flow Architecture
+
+**User Journey:**
+1. Homepage → "Get Things Done" → Account Creation
+2. Basic account setup (email, password, name)
+3. Extended onboarding questionnaire
+4. Dashboard with personalized experience
+
+**Data Collection Points:**
+- **Interests/Hobbies/Passions** (15 options, select 3-5)
+  - Fitness & Sports
+  - Reading & Writing
+  - Music & Arts
+  - Technology & Gaming
+  - Cooking & Food
+  - Travel & Adventure
+  - Nature & Outdoors
+  - Social & Networking
+  - Learning & Education
+  - Business & Entrepreneurship
+  - Health & Wellness
+  - Photography & Video
+  - DIY & Crafts
+  - Meditation & Mindfulness
+  - Finance & Investment
+
+- **Profile Information:**
+  - Main life goal (text input with suggestions)
+  - Daily free time (slider: 0-24 hours)
+  - Age (number input or range selector)
+  - Gender (inclusive options)
+
+### 3. Productivity Score System
+
+**Decay Mechanism:**
+- Base score starts at 100
+- Daily decay rate: -5 points if no tasks completed
+- Task completion bonus: +10 points per task
+- Subtask completion: +3 points each
+- Streak multiplier: 1.5x after 7 days
+
+**Visual Design:**
+- Circular progress indicator with gradient colors
+- Red (0-30) → Yellow (31-70) → Green (71-100)
+- Animated transitions and particle effects
+- Daily streak counter with fire emoji
+
+### 4. Interest-Based Subtask Ranking
+
+**Algorithm:**
+- Analyze task description for keyword matches
+- Score subtasks based on hobby alignment (0-100)
+- Prioritize subtasks matching user interests
+- Inject hobby-related suggestions into task breakdowns
+
+### 5. FOMO Feed Feature
+
+**Components:**
+- Real-time activity feed
+- Anonymous or username-based entries
+- Task completion celebrations
+- Productivity score achievements
+- Daily/weekly leaderboards
+
+---
+
+# Replit Implementation Prompt
+
+## Project: TaskCatalyst Enhancement
+
+I need you to implement the following features in my TaskCatalyst web application. The app should be a modern, gamified productivity platform with social features and personalized task management.
+
+### Core Requirements:
+
+#### 1. Homepage Modifications
+- Replace the "Start Free Trial" button text with "Get Things Done"
+- Make the "TaskCatalyst" logo/text in the top-left clickable and link it to the homepage
+- Keep the homepage identical for both authenticated and non-authenticated users
+- Implement conditional routing for the "Get Things Done" button:
+  - If user is authenticated → redirect to /dashboard
+  - If user is not authenticated → redirect to /onboarding
+
+#### 2. Onboarding Flow Implementation
+Create a multi-step onboarding process after account creation with these screens:
+
+**Screen 1: Interests Selection**
+- Display 15 hobby/interest options in a grid layout (similar to Tinder's Passions page)
+- Options: Fitness & Sports, Reading & Writing, Music & Arts, Technology & Gaming, Cooking & Food, Travel & Adventure, Nature & Outdoors, Social & Networking, Learning & Education, Business & Entrepreneurship, Health & Wellness, Photography & Video, DIY & Crafts, Meditation & Mindfulness, Finance & Investment
+- Users must select between 3-5 interests
+- Use card-based UI with icons and hover effects
+- Selected cards should have a highlighted border and checkmark
+
+**Screen 2: Life Goal**
+- Text input for main life goal
+- Provide autocomplete suggestions
+- Character limit: 200
+
+**Screen 3: Daily Availability**
+- Slider component for "How much free time do you have per day?"
+- Range: 0-24 hours with 0.5 hour increments
+- Display selected value prominently
+
+**Screen 4: Demographics**
+- Age input (number field or dropdown)
+- Gender selection (inclusive options: Male, Female, Non-binary, Prefer not to say, Custom)
+
+#### 3. Database Schema Updates
+Add these fields to the user model:
+```javascript
+{
+  interests: [String], // Array of selected interests (3-5)
+  lifeGoal: String,
+  dailyFreeTime: Number, // in hours
+  age: Number,
+  gender: String,
+  productivityScore: {
+    current: Number, // default: 100
+    lastUpdated: Date,
+    streak: Number // default: 0
+  },
+  onboardingCompleted: Boolean
+}
+```
+
+#### 4. Productivity Score System
+Implement a decay mechanism with these rules:
+- Starting score: 100 points
+- Daily decay: -5 points if no tasks completed in 24 hours
+- Task completion: +10 points
+- Subtask completion: +3 points
+- Max score: 100 points
+- Min score: 0 points
+- Streak bonus: After 7 consecutive days of task completion, apply 1.5x multiplier to points earned
+
+**Visual Implementation:**
+- Create a circular progress indicator with animated transitions
+- Use gradient colors: Red (0-30), Yellow (31-70), Green (71-100)
+- Add particle effects when score increases
+- Display current streak with a fire emoji (🔥) and number
+- Show "Score at risk!" warning when user hasn't completed tasks in 20+ hours
+
+#### 5. Smart Subtask Ranking
+When displaying subtasks:
+- Analyze each subtask description for keywords matching user interests
+- Calculate relevance score (0-100) based on interest alignment
+- Sort subtasks by relevance score (highest first)
+- Add small interest icons next to relevant subtasks
+- When generating subtasks with AI, incorporate user's interests into the prompts
+
+#### 6. FOMO Feed Component
+Create a social feed showing:
+- Real-time updates of tasks completed by other users
+- Format: "[Username/Anonymous] just completed: [Task Title] 🎉"
+- Include productivity score achievements: "[Username] reached a 100 productivity score! 🏆"
+- Show timestamp (e.g., "2 minutes ago")
+- Limit to last 20 activities
+- Auto-refresh every 30 seconds
+- Add subtle animation when new items appear
+
+### Technical Specifications:
+- Use React/Next.js for frontend
+- Implement smooth transitions between onboarding screens
+- Use Framer Motion or similar for animations
+- Ensure mobile responsiveness
+- Add loading states and error handling
+- Use toast notifications for success/error messages
+- Implement proper form validation
+- Store all user preferences in the database
+- Use WebSocket or polling for real-time FOMO feed updates
+
+### UI/UX Guidelines:
+- Modern, clean design with consistent spacing
+- Use a primary color scheme with accent colors for CTAs
+- Implement dark mode support
+- Add micro-interactions (hover effects, button animations)
+- Ensure accessibility (ARIA labels, keyboard navigation)
+- Use modern fonts (Inter, Poppins, or similar)
+- Add smooth page transitions
+- Include progress indicators during onboarding
+
+### Priority Order:
+1. Homepage button text change and navigation
+2. Basic onboarding flow with database integration
+3. Productivity score system with decay
+4. Interest-based subtask ranking
+5. FOMO feed
+
+Please implement these features incrementally, testing each component thoroughly before moving to the next. Ensure all new features integrate seamlessly with the existing TaskCatalyst functionality.

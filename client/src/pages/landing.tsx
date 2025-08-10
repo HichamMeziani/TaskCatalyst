@@ -18,9 +18,9 @@ export default function Landing() {
               <div className="w-10 h-10 premium-gradient rounded-xl flex items-center justify-center shadow-lg">
                 <Zap className="w-6 h-6 text-primary-foreground floating-animation" />
               </div>
-              <span className="text-2xl font-display font-bold gradient-text text-shadow">
+              <a href="/" className="text-2xl font-display font-bold gradient-text text-shadow hover:opacity-80 transition-opacity">
                 TaskCatalyst
-              </span>
+              </a>
             </div>
             <div className="flex items-center space-x-4 fade-in">
               <Button variant="ghost" onClick={handleAuth} className="font-medium">
@@ -51,7 +51,7 @@ export default function Landing() {
               onClick={handleAuth}
               className="px-8 py-4 text-lg font-semibold shadow-2xl card-hover premium-gradient text-primary-foreground"
             >
-              Start Free Trial
+              Get Things Done
             </Button>
             <Button 
               variant="outline" 
@@ -188,7 +188,7 @@ export default function Landing() {
             onClick={handleAuth}
             className="px-12 py-6 text-xl font-display font-bold shadow-2xl card-hover premium-gradient text-primary-foreground slide-up"
           >
-            Start Your Free Trial
+            Get Things Done
           </Button>
         </div>
       </div>

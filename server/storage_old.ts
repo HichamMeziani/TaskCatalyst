@@ -3,7 +3,6 @@ import {
   tasks,
   catalysts,
   taskAnalytics,
-  activityFeed,
   type User,
   type UpsertUser,
   type Task,
@@ -13,20 +12,15 @@ import {
   type InsertCatalyst,
   type TaskAnalytics,
   type InsertTaskAnalytics,
-  type ActivityFeed,
-  type InsertActivityFeed,
-  type OnboardingData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, sql } from "drizzle-orm";
+import { eq, and, desc, sql, count } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
   // User operations (IMPORTANT) these user operations are mandatory for Replit Auth.
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  completeOnboarding(userId: string, onboardingData: OnboardingData): Promise<User>;
-  updateProductivityScore(userId: string, scoreChange: number): Promise<User>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User>;
   
   // Task operations
@@ -45,16 +39,11 @@ export interface IStorage {
   getUserAnalytics(userId: string): Promise<{
     totalTasks: number;
     completedTasks: number;
-    tasksInProgress: number;
     tasksStartedToday: number;
     catalystSuccessRate: number;
     averageTimeToStart: number;
     completionRate: number;
   }>;
-  
-  // Activity feed operations
-  getActivityFeed(limit?: number): Promise<ActivityFeed[]>;
-  createActivity(activity: InsertActivityFeed): Promise<ActivityFeed>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -77,55 +66,6 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
-  }
-
-  async completeOnboarding(userId: string, onboardingData: OnboardingData): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        ...onboardingData,
-        onboardingCompleted: true,
-        lastActivityDate: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
-  }
-
-  async updateProductivityScore(userId: string, scoreChange: number): Promise<User> {
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("User not found");
-
-    const newScore = Math.max(0, Math.min(100, (user.productivityScore || 100) + scoreChange));
-    const now = new Date();
-    const lastActivity = user.lastActivityDate;
-    
-    // Calculate streak
-    let newStreak = user.productivityStreak || 0;
-    if (scoreChange > 0) { // Task completed
-      const daysSinceLastActivity = lastActivity 
-        ? Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
-        : 999;
-      
-      if (daysSinceLastActivity <= 1) {
-        newStreak += 1;
-      } else {
-        newStreak = 1; // Reset streak
-      }
-    }
-
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        productivityScore: newScore,
-        productivityStreak: newStreak,
-        lastActivityDate: now,
-        updatedAt: now,
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return updatedUser;
   }
 
   async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User> {
@@ -251,7 +191,6 @@ export class DatabaseStorage implements IStorage {
   async getUserAnalytics(userId: string): Promise<{
     totalTasks: number;
     completedTasks: number;
-    tasksInProgress: number;
     tasksStartedToday: number;
     catalystSuccessRate: number;
     averageTimeToStart: number;
@@ -268,12 +207,6 @@ export class DatabaseStorage implements IStorage {
       .select({ count: count() })
       .from(tasks)
       .where(and(eq(tasks.userId, userId), eq(tasks.status, "completed")));
-
-    // Get in progress tasks count
-    const [inProgressTasksResult] = await db
-      .select({ count: count() })
-      .from(tasks)
-      .where(and(eq(tasks.userId, userId), eq(tasks.status, "in_progress")));
 
     // Get tasks started today
     const today = new Date();
@@ -310,7 +243,6 @@ export class DatabaseStorage implements IStorage {
 
     const totalTasks = totalTasksResult.count || 0;
     const completedTasks = completedTasksResult.count || 0;
-    const tasksInProgress = inProgressTasksResult.count || 0;
     const tasksStartedToday = tasksStartedTodayResult.count || 0;
     const catalystSuccessRate = catalystAnalytics.totalCatalysts > 0 
       ? (catalystAnalytics.completedCatalysts / catalystAnalytics.totalCatalysts) * 100 
@@ -321,22 +253,11 @@ export class DatabaseStorage implements IStorage {
     return {
       totalTasks,
       completedTasks,
-      tasksInProgress,
       tasksStartedToday,
       catalystSuccessRate: Math.round(catalystSuccessRate),
       averageTimeToStart: Math.round(averageTimeToStart),
       completionRate: Math.round(completionRate),
     };
-  }
-
-  // Activity feed operations
-  async getActivityFeed(limit = 20): Promise<ActivityFeed[]> {
-    return await db.select().from(activityFeed).orderBy(desc(activityFeed.createdAt)).limit(limit);
-  }
-
-  async createActivity(activity: InsertActivityFeed): Promise<ActivityFeed> {
-    const [newActivity] = await db.insert(activityFeed).values(activity).returning();
-    return newActivity;
   }
 }
 

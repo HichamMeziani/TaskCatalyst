@@ -1,41 +1,29 @@
 import { Card } from "@/components/ui/card";
-import { PlayCircle, CheckCircle, Target, Flame } from "lucide-react";
 
 interface StatsCardProps {
   title: string;
-  value: string | number;
-  icon: "play-circle" | "check-circle" | "target" | "flame";
-  trend: string;
-  color: "success" | "primary" | "warning" | "orange";
+  value: number | string;
+  subtitle?: string;
+  icon?: React.ReactNode;
 }
 
-const iconMap = {
-  "play-circle": PlayCircle,
-  "check-circle": CheckCircle,
-  "target": Target,
-  "flame": Flame,
-};
-
-const colorMap = {
-  success: "text-success",
-  primary: "text-primary",
-  warning: "text-warning",
-  orange: "text-orange-400",
-};
-
-export default function StatsCard({ title, value, icon, trend, color }: StatsCardProps) {
-  const IconComponent = iconMap[icon];
-
+export default function StatsCard({ title, value, subtitle, icon }: StatsCardProps) {
   return (
-    <Card className="p-6">
+    <Card className="p-6 sophisticated-border glass-morphism">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-muted-foreground text-sm">{title}</p>
-          <p className={`text-2xl font-bold ${colorMap[color]}`}>{value}</p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-display font-bold">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+          )}
         </div>
-        <IconComponent className={`w-8 h-8 ${colorMap[color]}`} />
+        {icon && (
+          <div className="w-12 h-12 rounded-xl premium-gradient flex items-center justify-center text-primary-foreground">
+            {icon}
+          </div>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground mt-2">{trend}</p>
     </Card>
   );
 }

@@ -24,6 +24,8 @@ export interface CatalystRequest {
 export interface CatalystResponse {
   content: string;
   estimatedMinutes: number;
+  relevanceScore?: number;
+  matchedInterests?: string[];
 }
 
 export class AIService {
@@ -34,6 +36,7 @@ Given this task: "{taskTitle}"
 {taskDescription ? "Description: " + taskDescription : ""}
 {category ? "Category: " + category : ""}
 {priority ? "Priority: " + priority : ""}
+{userInterests ? "User interests: " + userInterests.join(", ") : ""}
 
 Generate a single catalyst subtask that:
 - Takes under 5 minutes to complete
@@ -53,13 +56,17 @@ Examples:
 Respond with JSON in this exact format:
 {
   "content": "Your catalyst micro-task here",
-  "estimatedMinutes": 3
+  "estimatedMinutes": 3,
+  "relevanceScore": 85,
+  "matchedInterests": ["technology-gaming", "learning-education"]
 }
 
 The content should be practical, specific, and immediately actionable. The estimatedMinutes should be 1-5 minutes.
+If user interests are provided, relevanceScore should be 0-100 based on how well the catalyst aligns with their interests.
+matchedInterests should list any interest categories that relate to this catalyst.
 `;
 
-  async generateCatalyst(request: CatalystRequest): Promise<CatalystResponse> {
+  async generateCatalyst(request: CatalystRequest, userInterests: string[] = []): Promise<CatalystResponse> {
     try {
       const prompt = this.catalystPrompt
         .replace("{taskTitle}", request.taskTitle)
@@ -68,7 +75,9 @@ The content should be practical, specific, and immediately actionable. The estim
         .replace("{category ? \"Category: \" + category : \"\"}", 
           request.category ? `Category: ${request.category}` : "")
         .replace("{priority ? \"Priority: \" + priority : \"\"}", 
-          request.priority ? `Priority: ${request.priority}` : "");
+          request.priority ? `Priority: ${request.priority}` : "")
+        .replace("{userInterests ? \"User interests: \" + userInterests.join(\", \") : \"\"}", 
+          userInterests.length > 0 ? `User interests: ${userInterests.join(", ")}` : "");
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o"

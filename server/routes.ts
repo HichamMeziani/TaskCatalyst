@@ -30,16 +30,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Onboarding routes
+  app.post("/api/onboarding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const onboardingData = z.object({
+        interests: z.array(z.string()).min(3).max(5),
+        lifeGoal: z.string().min(1).max(200),
+        dailyFreeTime: z.number().min(0).max(24),
+        age: z.number().min(13).max(120),
+        gender: z.enum(["male", "female", "non-binary", "prefer-not-to-say", "custom"]),
+      }).parse(req.body);
+      
+      const user = await storage.completeOnboarding(userId, onboardingData);
+      res.json({ user });
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
+    }
+  });
+
   // Task routes
+  app.get("/api/tasks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tasks = await storage.getUserTasks(userId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
   app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       const taskData = insertTaskSchema.parse({ ...req.body, userId });
 
       // Create the task
       const task = await storage.createTask(taskData);
 
-      // Generate AI catalyst
+      // Generate AI catalyst with user interests
       const catalystRequest = {
         taskTitle: task.title,
         taskDescription: task.description || undefined,
@@ -47,13 +79,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         priority: task.priority || undefined,
       };
 
-      const catalystResponse = await aiService.generateCatalyst(catalystRequest);
+      const catalystResponse = await aiService.generateCatalyst(catalystRequest, user?.interests || []);
 
       // Save the catalyst
       const catalyst = await storage.createCatalyst({
         taskId: task.id,
         content: catalystResponse.content,
         estimatedMinutes: catalystResponse.estimatedMinutes,
+        relevanceScore: catalystResponse.relevanceScore || 0,
+        matchedInterests: catalystResponse.matchedInterests || [],
       });
 
       // Create analytics entry
@@ -72,17 +106,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tasks", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const tasks = await storage.getUserTasks(userId);
-      res.json(tasks);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      res.status(500).json({ message: "Failed to fetch tasks" });
-    }
-  });
-
   app.patch("/api/tasks/:taskId/status", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -95,23 +118,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const task = await storage.updateTaskStatus(taskId, userId, status);
       
-      // Update analytics
-      if (status === "in_progress") {
-        // Calculate time to start (in minutes)
-        const timeToStart = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60));
-        await storage.createTaskAnalytics({
+      // Update productivity score and create activity feed entry
+      if (status === "completed") {
+        await storage.updateProductivityScore(userId, 10); // +10 for task completion
+        
+        const user = await storage.getUser(userId);
+        await storage.createActivity({
           userId,
-          taskId,
-          taskStarted: true,
-          timeToStart,
+          username: user?.firstName || "Someone",
+          activityType: "task_completed",
+          description: "just completed a task! 🎉",
+          taskTitle: task.title,
+          productivityScore: user?.productivityScore || 0,
         });
-      } else if (status === "completed") {
+        
         const timeToComplete = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60));
         await storage.createTaskAnalytics({
           userId,
           taskId,
           taskCompleted: true,
           timeToComplete,
+        });
+      } else if (status === "in_progress") {
+        await storage.updateProductivityScore(userId, 3); // +3 for starting task
+        const timeToStart = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60));
+        await storage.createTaskAnalytics({
+          userId,
+          taskId,
+          taskStarted: true,
+          timeToStart,
         });
       }
 
@@ -138,14 +173,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Catalyst routes
   app.patch("/api/catalysts/:catalystId/complete", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { catalystId } = req.params;
       const { completed } = req.body;
 
       const catalyst = await storage.updateCatalystCompletion(catalystId, completed);
       
+      // Update productivity score for catalyst completion
       if (completed) {
-        // Update analytics
-        const userId = req.user.claims.sub;
+        await storage.updateProductivityScore(userId, 3); // +3 for catalyst completion
         await storage.createTaskAnalytics({
           userId,
           taskId: catalyst.taskId,
@@ -160,41 +196,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/catalysts/:catalystId/regenerate", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { catalystId } = req.params;
-
-      // Get the current catalyst to find the associated task
-      const task = await storage.getTask(req.body.taskId, userId);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      // Generate new catalyst
-      const catalystRequest = {
-        taskTitle: task.title,
-        taskDescription: task.description || undefined,
-        category: task.category || undefined,
-        priority: task.priority || undefined,
-      };
-
-      const catalystResponse = await aiService.generateCatalyst(catalystRequest);
-
-      // Update the existing catalyst
-      const catalyst = await storage.createCatalyst({
-        taskId: task.id,
-        content: catalystResponse.content,
-        estimatedMinutes: catalystResponse.estimatedMinutes,
-      });
-
-      res.json(catalyst);
-    } catch (error) {
-      console.error("Error regenerating catalyst:", error);
-      res.status(500).json({ message: "Failed to regenerate catalyst" });
-    }
-  });
-
   // Analytics routes
   app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {
@@ -204,6 +205,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Activity feed routes
+  app.get("/api/activity-feed", isAuthenticated, async (req: any, res) => {
+    try {
+      const activities = await storage.getActivityFeed(20);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching activity feed:", error);
+      res.status(500).json({ message: "Failed to fetch activity feed" });
     }
   });
 

@@ -7,22 +7,35 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Subscribe from "@/pages/subscribe";
+import Onboarding from "@/pages/onboarding";
+import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {isLoading ? (
+        <Route path="/" component={Landing} />
+      ) : !isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
+          <Route path="/onboarding" component={Onboarding} />
+          <Route path="/subscribe" component={Subscribe} />
+        </>
+      ) : !user?.onboardingCompleted ? (
+        <>
+          <Route path="/" component={Onboarding} />
+          <Route path="/onboarding" component={Onboarding} />
           <Route path="/subscribe" component={Subscribe} />
         </>
       ) : (
         <>
-          <Route path="/" component={Home} />
+          <Route path="/" component={Dashboard} />
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/subscribe" component={Subscribe} />
+          <Route path="/home" component={Home} />
         </>
       )}
       <Route component={NotFound} />

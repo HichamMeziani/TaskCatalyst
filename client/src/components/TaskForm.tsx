@@ -2,48 +2,45 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { Plus } from "lucide-react";
 
 export default function TaskForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("personal");
-  const [priority, setPriority] = useState("medium");
-  const [showAIProcessing, setShowAIProcessing] = useState(false);
-
+  const [category, setCategory] = useState("");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const createTaskMutation = useMutation({
-    mutationFn: async (taskData: any) => {
-      setShowAIProcessing(true);
-      const response = await apiRequest("POST", "/api/tasks", taskData);
-      return response.json();
+    mutationFn: async (taskData: {
+      title: string;
+      description?: string;
+      category?: string;
+      priority: "low" | "medium" | "high";
+    }) => {
+      return apiRequest("POST", "/api/tasks", taskData);
     },
-    onSuccess: (data) => {
-      setShowAIProcessing(false);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
-      
-      // Reset form
+      queryClient.invalidateQueries({ queryKey: ["/api/activity-feed"] });
+      toast({
+        title: "Task Created",
+        description: "Your task has been created with an AI-generated catalyst!",
+      });
       setTitle("");
       setDescription("");
-      setCategory("personal");
+      setCategory("");
       setPriority("medium");
-
-      toast({
-        title: "Task Created!",
-        description: `Task created with AI catalyst: "${data.catalyst.content}"`,
-      });
     },
     onError: (error) => {
-      setShowAIProcessing(false);
-      
       if (isUnauthorizedError(error as Error)) {
         toast({
           title: "Unauthorized",
@@ -55,7 +52,6 @@ export default function TaskForm() {
         }, 500);
         return;
       }
-
       toast({
         title: "Error",
         description: "Failed to create task. Please try again.",
@@ -66,11 +62,10 @@ export default function TaskForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!title.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a task title",
+        title: "Title Required",
+        description: "Please enter a task title.",
         variant: "destructive",
       });
       return;
@@ -79,83 +74,79 @@ export default function TaskForm() {
     createTaskMutation.mutate({
       title: title.trim(),
       description: description.trim() || undefined,
-      category,
+      category: category.trim() || undefined,
       priority,
     });
   };
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Task Title *</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="What do you want to accomplish?"
+          maxLength={100}
+          className="sophisticated-border"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description (Optional)</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Add more details about your task..."
+          maxLength={500}
+          className="sophisticated-border min-h-[100px]"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="category">Category (Optional)</Label>
           <Input
-            placeholder="Describe your task... (e.g., Write quarterly report, Learn Spanish, Organize garage)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={createTaskMutation.isPending}
-            className="text-base"
-          />
-        </div>
-        
-        <div>
-          <Textarea
-            placeholder="Additional details (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={createTaskMutation.isPending}
-            className="resize-none"
-            rows={2}
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="e.g., Work, Personal, Study"
+            maxLength={50}
+            className="sophisticated-border"
           />
         </div>
 
-        <div className="flex justify-between items-center">
-          <div className="flex space-x-2">
-            <Select value={category} onValueChange={setCategory} disabled={createTaskMutation.isPending}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="work">Work</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="learning">Learning</SelectItem>
-                <SelectItem value="health">Health</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={priority} onValueChange={setPriority} disabled={createTaskMutation.isPending}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="high">High Priority</SelectItem>
-                <SelectItem value="medium">Medium Priority</SelectItem>
-                <SelectItem value="low">Low Priority</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button type="submit" disabled={createTaskMutation.isPending || !title.trim()}>
-            {createTaskMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            <span className="ml-2">Create Task</span>
-          </Button>
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <Select value={priority} onValueChange={(value: "low" | "medium" | "high") => setPriority(value)}>
+            <SelectTrigger className="sophisticated-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </form>
+      </div>
 
-      {/* AI Processing Indicator */}
-      {showAIProcessing && (
-        <div className="p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg catalyst-glow">
-          <div className="flex items-center space-x-3">
-            <Loader2 className="w-4 h-4 animate-spin text-warning" />
-            <span className="text-warning">
-              AI is generating your catalyst<span className="loading-dots"></span>
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+      <Button
+        type="submit"
+        disabled={createTaskMutation.isPending || !title.trim()}
+        className="w-full premium-gradient text-primary-foreground font-semibold"
+      >
+        {createTaskMutation.isPending ? (
+          "Creating Task..."
+        ) : (
+          <>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Task with AI Catalyst
+          </>
+        )}
+      </Button>
+    </form>
   );
 }
